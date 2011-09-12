@@ -28,6 +28,7 @@ import sdc.gen.type;
 import sdc.gen.value;
 import sdc.gen.sdcfunction;
 import sdc.gen.cfg;
+import sdc.gen.loop;
 
 
 /**
@@ -49,7 +50,7 @@ class Module
     Value base;
     Value callingAggregate;
     ast.Access currentAccess = ast.Access.Public;
-    Value[]* functionPointerArguments; 
+    Value[]* functionPointerArguments;
 
     //ReturnTypeHolder[] returnTypes;
     
@@ -344,13 +345,32 @@ class Module
     {
         return mFailureList;
     }
+    
+    void pushLoop(Loop* loop)
+    {
+        mLoopStack ~= loop;
+    }
+    
+    void popLoop()
+    {
+        mLoopStack = mLoopStack[0..$-1];
+    }
+    
+    Loop* topLoop() @property
+    {
+        if (mLoopStack.length == 0) {
+            return null;
+        } else {
+            return mLoopStack[$-1];
+        }
+    }
 
     Value gcAlloc(Location location, Value n)
     {
         auto voidPointer = new PointerType(this, new VoidType(this));
         auto sizeT = getSizeT(this);
         auto allocType = new FunctionType(this, voidPointer, [sizeT], false);
-        allocType.linkage = ast.Linkage.ExternC;
+        allocType.linkage = ast.Linkage.C;
         allocType.declare();
 
         LLVMValueRef mallocFn = LLVMGetNamedFunction(mod, "malloc");
@@ -369,7 +389,7 @@ class Module
         auto voidPointer = new PointerType(this, new VoidType(this));
         auto sizeT = getSizeT(this);
         auto reallocType = new FunctionType(this, voidPointer, [voidPointer, sizeT], false);
-        reallocType.linkage = ast.Linkage.ExternC;
+        reallocType.linkage = ast.Linkage.C;
         reallocType.declare();
 
         LLVMValueRef reallocFn = LLVMGetNamedFunction(mod, "realloc");
@@ -391,7 +411,7 @@ class Module
         auto stringType = new ArrayType(this, new CharType(this));
         auto intType = new IntType(this);
         auto assertType = new FunctionType(this, voidType, [boolType, stringType, intType, stringType], false);
-        assertType.linkage = ast.Linkage.ExternC;
+        assertType.linkage = ast.Linkage.C;
         assertType.declare();
 
         LLVMValueRef assertFn = LLVMGetNamedFunction(mod, "__d_assert");
@@ -413,7 +433,8 @@ class Module
                   [condition.location, message.location, line.location, filename.location],
                   [condition, message, line, filename]);
     }
-
+    
+    protected Loop*[] mLoopStack; // For break and continue targets.
     protected Scope[] mScopeStack;
     protected LookupFailure[] mFailureList;
     protected bool[string] mVersionIdentifiers;

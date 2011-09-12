@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 module sdc.sdc;
+version (SDCCOMPILER):
 
 import std.algorithm;
 import std.array;
@@ -68,7 +69,7 @@ int main(string[] args)
         do {
             stderr.writeln(error.msg);
             
-            if(error.hasLocation) {
+            if(error.location.filename !is null) {
                 outputCaretDiagnostics(error.location, error.fixHint);
             }
         } while((error = error.more) !is null);

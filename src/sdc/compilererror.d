@@ -9,12 +9,12 @@ module sdc.compilererror;
 import std.stdio;
 import std.string;
 
+import sdc.terminal;
 import sdc.location;
 
 class CompilerError : Exception
 {
     Location location;
-    bool hasLocation = false;
     
     CompilerError more; // Optional
     string fixHint; // Optional
@@ -34,7 +34,6 @@ class CompilerError : Exception
     {
         super(format(locationFormat(), loc, message));
         location = loc;
-        hasLocation = true;
     }
     
     this(Location loc, string message, CompilerError more)
@@ -115,6 +114,18 @@ class MissingSemicolonError : CompilerError
     }
 }
 
+class MissingColonError : CompilerError
+{
+    this(Location loc, string type)
+    {
+        loc.column += loc.length;
+        loc.length = 1;
+        super(loc, format("missing ':' after %s.", type));
+        
+        fixHint = ":";
+    }
+}
+
 class PairMismatchError : CompilerError
 {
     this(Location pairStart, Location loc, string type, string token)
@@ -154,4 +165,5 @@ void errorMessageOnly(Location loc, string message)
 void warning(Location loc, string message)
 {
     stderr.writeln(format("%s: warning: %s", loc, message));
+    outputCaretDiagnostics(loc, null);
 }

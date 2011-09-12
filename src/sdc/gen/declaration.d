@@ -153,9 +153,11 @@ void declareFunctionDeclaration(ast.FunctionDeclaration decl, ast.DeclarationDef
         names ~= param.identifier !is null ? extractIdentifier(param.identifier) : "";
     }
     
-    auto fntype = new FunctionType(mod, returnType, params, decl.parameterList.varargs, decl);
-    auto fn = new Function(fntype);
+    auto fntype = new FunctionType(mod, returnType, params, decl.parameterList.varargs);
+    fntype.linkage = decl.linkage;
+    fntype.isStatic = decl.searchAttributesBackwards(ast.AttributeType.Static);
     
+    auto fn = new Function(fntype);
     fn.location = decl.location;
     fn.argumentListLocation = decl.parameterList.location;
     foreach(param; decl.parameterList.parameters) {
@@ -167,7 +169,7 @@ void declareFunctionDeclaration(ast.FunctionDeclaration decl, ast.DeclarationDef
     } else {
         // implementing java native function
         fn.simpleName = javaMangle(decl.name);
-        fntype.linkage = ast.Linkage.ExternC; 
+        fntype.linkage = ast.Linkage.C;
     }
     fn.argumentNames = names;
     auto store = new Store(fn, decl.name.location);
@@ -192,7 +194,7 @@ void genMixinDeclaration(ast.MixinDeclaration decl, Module mod)
     if (decl.declarationCache !is null) {
         return;
     }
-    auto val = genAssignExpression(decl.expression, mod);
+    auto val = genConditionalExpression(decl.expression, mod);
     if (!val.isKnown || !isString(val.type)) {
         throw new CompilerError(decl.location, "a mixin expression must be a string known at compile time.");
     }
@@ -262,7 +264,7 @@ void genVariableDeclaration(ast.VariableDeclaration decl, Module mod)
             if (declarator.initialiser.type == ast.InitialiserType.Void) {
                 var.initialise(decl.location, LLVMGetUndef(type.llvmType));
             } else if (declarator.initialiser.type == ast.InitialiserType.AssignExpression) {
-                auto aexp = genAssignExpression(cast(ast.AssignExpression) declarator.initialiser.node, mod);
+                auto aexp = genConditionalExpression(cast(ast.ConditionalExpression) declarator.initialiser.node, mod);
                 if (type.dtype == DType.Inferred) {
                     type = aexp.type;
                     var = type.getValue(mod, decl.location);

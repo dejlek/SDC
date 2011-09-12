@@ -25,7 +25,6 @@ enum StatementType
     ForStatement,
     ForeachStatement,
     SwitchStatement,
-    FinalSwitchStatement,
     CaseStatement,
     CaseRangeStatement,
     DefaultStatement,
@@ -85,8 +84,8 @@ class DeclarationStatement : Node
 class IfStatement : Node
 {
     IfCondition ifCondition;
-    ThenStatement thenStatement;
-    ElseStatement elseStatement;  // Optional.
+    Statement thenStatement;
+    Statement elseStatement;  // Optional.
 }
 
 enum IfConditionType
@@ -102,16 +101,6 @@ class IfCondition : Node
     IfConditionType type;
     Expression expression;
     Node node;  // Optional.
-}
-
-class ThenStatement : Node
-{
-    Statement statement;
-}
-
-class ElseStatement : Node
-{
-    Statement statement;
 }
 
 
@@ -140,14 +129,6 @@ class ForStatement : Node
     Statement statement;
 }
 
-enum ForIncrementType { Empty, Expression }
-
-class ForIncrement : Node
-{
-    ForIncrementType type;
-    Node node;  // Optional.
-}
-
 // foreach ( ForeachTypes ; Expression (.. Expression)?) Statement
 enum ForeachForm { Aggregate, Range }
 
@@ -171,58 +152,49 @@ class ForeachType : Node
 }
 
 
-// switch ( Expression ) ScopeStatement
+// ( final )? switch ( Expression ) ScopeStatement
 class SwitchStatement : Node
 {
-    Expression expression;
+    bool isFinal;
+    Expression controlExpression;
     Statement statement;
 }
 
-// case ArgumentList : Statement
-class CaseStatement : Node
+// Default statement and the two case statements.
+class SwitchSubStatement : Node
 {
-    ArgumentList argumentList;
-    Statement statement;
+    Statement[] statementList;
 }
 
-// case AssignExpression : .. case AssignExpression : Statement
-class CaseRangeStatement : Node
+// case ArgumentList : StatementList
+class CaseListStatement : SwitchSubStatement
 {
-    AssignExpression firstExpression;
-    AssignExpression secondExpression;
-    Statement statement;
+    ConditionalExpression[] cases;
 }
 
-// default : Statement
-class DefaultStatement : Node
+// case AssignExpression : .. case AssignExpression : StatementList
+class CaseRangeStatement : SwitchSubStatement
 {
-    Statement statement;
-}
-
-
-// final switch ( Expression ) Statement
-class FinalSwitchStatement : Node
-{
-    Expression expression;
-    Statement statement;
+    ConditionalExpression rangeBegin;
+    ConditionalExpression rangeEnd;
 }
 
 
 class ContinueStatement : Node
 {
-    Identifier identifier;  // Optional.
+    Identifier target;  // Optional.
 }
 
 
 class BreakStatement : Node
 {
-    Identifier identifier;  // Optional.
+    Identifier target;  // Optional.
 }
 
 
 class ReturnStatement : Node
 {
-    Expression expression;  // Optional.
+    Expression retval;  // Optional.
 }
 
 
@@ -231,8 +203,8 @@ enum GotoStatementType { Identifier, Default, Case }
 class GotoStatement : Node
 {
     GotoStatementType type;
-    Identifier identifier;  // Optional.
-    Expression expression;  // Optional.
+    Identifier target;  // Optional.
+    Expression caseTarget;  // Optional.
 }
 
 enum WithStatementType { Expression, Symbol, TemplateInstance }
@@ -297,7 +269,7 @@ class FinallyStatement : Node
 // throw Expression
 class ThrowStatement : Node
 {
-    Expression expression;
+    Expression exception;
 }
 
 
@@ -317,7 +289,7 @@ class PragmaStatement : Node
 
 class MixinStatement : Node
 {
-    AssignExpression expression;
+    ConditionalExpression code;
 }
 
 class AsmStatement : Node
