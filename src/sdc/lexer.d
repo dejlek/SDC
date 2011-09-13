@@ -201,6 +201,7 @@ void skipLineComment(TokenWriter tw)
 
 void skipBlockComment(TokenWriter tw)
 {
+    match(tw.source, '*');
     bool looping = true;
     while (looping) {
         if (tw.source.eof) {
@@ -225,6 +226,7 @@ void skipBlockComment(TokenWriter tw)
 
 void skipNestingComment(TokenWriter tw)
 {
+    match(tw.source, '+');
     int depth = 1;
     while (depth > 0) {
         if (tw.source.eof) {

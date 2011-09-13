@@ -1,5 +1,3 @@
-//T compiles:yes
-//T retval:0
 //? desc:Test the while loop.
 
 int main()

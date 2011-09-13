@@ -29,6 +29,7 @@ import sdc.gen.value;
 import sdc.gen.sdcfunction;
 import sdc.gen.cfg;
 import sdc.gen.loop;
+import sdc.gen.sdcswitch;
 
 
 /**
@@ -51,6 +52,7 @@ class Module
     Value callingAggregate;
     ast.Access currentAccess = ast.Access.Public;
     Value[]* functionPointerArguments;
+    Switch* currentSwitch;
 
     //ReturnTypeHolder[] returnTypes;
     
@@ -346,22 +348,22 @@ class Module
         return mFailureList;
     }
     
-    void pushLoop(Loop* loop)
+    void pushBreakTarget(BreakTarget target)
     {
-        mLoopStack ~= loop;
+        mBreakTargetStack ~= target;
     }
     
-    void popLoop()
+    void popBreakTarget()
     {
-        mLoopStack = mLoopStack[0..$-1];
+        mBreakTargetStack = mBreakTargetStack[0..$-1];
     }
     
-    Loop* topLoop() @property
+    BreakTarget topBreakTarget() @property
     {
-        if (mLoopStack.length == 0) {
+        if (mBreakTargetStack.length == 0) {
             return null;
         } else {
-            return mLoopStack[$-1];
+            return mBreakTargetStack[$-1];
         }
     }
 
@@ -434,7 +436,7 @@ class Module
                   [condition, message, line, filename]);
     }
     
-    protected Loop*[] mLoopStack; // For break and continue targets.
+    protected BreakTarget[] mBreakTargetStack; // For break and continue targets.
     protected Scope[] mScopeStack;
     protected LookupFailure[] mFailureList;
     protected bool[string] mVersionIdentifiers;
