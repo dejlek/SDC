@@ -39,10 +39,9 @@ import sdc.parser.statement;
 
 // Called for return, break, continue and throw.
 // TODO: goto?
-private void declareExitBlock(string name, Module mod)
+private void genUnreachableBlock(string name, Module mod)
 {
     name = "post" ~ name;
-    mod.currentFunction.cfgTail.isExitBlock = true;
     
     auto block = new BasicBlock(name);
     block.isUnreachableBlock = true;
@@ -168,7 +167,23 @@ void genGotoStatement(ast.GotoStatement statement, Module mod)
         LLVMBuildBr(mod.builder, p.bb);
         break;
     case ast.GotoStatementType.Case:
-        throw new CompilerPanic(statement.location, "goto case is unimplemented.");
+        if (auto switch_ = mod.currentSwitch) {
+            auto pendingGotoCase = PendingGotoCase(statement.location, mod.currentFunction.currentBasicBlock, parent);
+            
+            if (statement.caseTarget is null) {
+                switch_.pendingGotoCases ~= pendingGotoCase;
+            } else {
+                auto v = genExpression(statement.caseTarget, mod);
+                v = implicitCast(v.location, v, switch_.type);
+                pendingGotoCase.explicitTarget = v;
+                switch_.pendingTargetedGotoCases ~= pendingGotoCase;
+            }
+            
+            genUnreachableBlock("gotocase", mod);
+        } else {
+            throw new CompilerError(statement.location, "goto case must be in a switch statement.");
+        }
+        break;
     case ast.GotoStatementType.Default:
         throw new CompilerPanic(statement.location, "goto default is unimplemented.");
     }
@@ -545,7 +560,8 @@ void genBreakStatement(ast.BreakStatement statement, Module mod)
     
     if (auto target = mod.topBreakTarget) {
         target.genBreak(statement.location, mod);
-        declareExitBlock("break", mod);
+        mod.currentFunction.cfgTail.children ~= target.breakBlock;
+        genUnreachableBlock("break", mod);
     } else {
         throw new CompilerError(statement.location, "break statement must be in a loop or switch statement.");
     }
@@ -559,7 +575,7 @@ void genContinueStatement(ast.ContinueStatement statement, Module mod)
     
     if (auto target = mod.topBreakTarget) {
         target.genContinue(statement.location, mod);
-        declareExitBlock("continue", mod);
+        genUnreachableBlock("continue", mod);
     } else {
         throw new CompilerError(statement.location, "continue statement must be in a loop.");
     }
@@ -587,7 +603,8 @@ void genReturnStatement(ast.ReturnStatement statement, Module mod)
         LLVMBuildRet(mod.builder, retval.get());
     }
     
-    declareExitBlock("return", mod);
+    mod.currentFunction.cfgTail.isExitBlock = true;
+    genUnreachableBlock("return", mod);
 }
 
 void genTryStatement(ast.TryStatement statement, Module mod)
@@ -633,7 +650,8 @@ void genThrowStatement(ast.ThrowStatement statement, Module mod)
     }
     LLVMBuildUnwind(mod.builder);
     
-    declareExitBlock("throw", mod);
+    mod.currentFunction.cfgTail.isExitBlock = true;
+    genUnreachableBlock("throw", mod);
 }
 
 void genConditionalStatement(ast.ConditionalStatement statement, Module mod)
